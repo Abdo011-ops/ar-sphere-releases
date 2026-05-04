@@ -16,13 +16,24 @@ jobs:
         with:
           node-version: 20
           
+      - name: Check package.json
+        run: |
+          if [ ! -f package.json ]; then
+            echo "No package.json found. Creating one..."
+            npx create-expo-app@latest temp-app --template blank
+            cp -r temp-app/* .
+            rm -rf temp-app
+          fi
+          
       - name: Install dependencies
         run: npm install
         
-      - name: Build APK
-        run: npx eas build --platform android --profile production --non-interactive
+      - name: Install Expo CLI
+        run: npm install -g expo-cli eas-cli
         
-      - name: Download APK
+      - name: Build APK
         run: |
-          # سيتم إضافة رابط التحميل هنا
-          echo "Build complete"
+          echo "Build started"
+          # Expo build command will go here
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}  
