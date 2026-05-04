@@ -24,7 +24,7 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       
-    - name: Check package.json
+    - name: Check and fix package.json
       run: |
         if [ ! -f package.json ]; then
           echo "No package.json found. Creating one..."
@@ -33,6 +33,23 @@ jobs:
           rm -rf temp-app
         fi
         
+    - name: Ensure Android package is set
+      run: |
+        if [ ! -f app.json ]; then
+          echo '{"expo": {"android": {"package": "com.example.myapp"}}}' > app.json
+        else
+          node -e "
+          const fs = require('fs');
+          let config = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          if(!config.expo) config.expo = {};
+          if(!config.expo.android) config.expo.android = {};
+          if(!config.expo.android.package) config.expo.android.package = 'com.example.myapp';
+          fs.writeFileSync('app.json', JSON.stringify(config, null, 2));
+          "
+        fi
+        echo "Final app.json:"
+        cat app.json
+        
     - name: Install dependencies
       run: npm install
       
@@ -40,7 +57,7 @@ jobs:
       run: npm install -g expo-cli
       
     - name: Prebuild Android
-      run: npx expo prebuild --platform android
+      run: npx expo prebuild --platform android --no-install
       
     - name: Build APK
       run: |
@@ -53,4 +70,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: app-release
-        path: android/app/build/outputs/apk/release/*.apk    
+        path: android/app/build/outputs/apk/release/*.apk
