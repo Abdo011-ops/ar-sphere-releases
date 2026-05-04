@@ -1,48 +1,44 @@
-name: Build APK
-
+    name: Build APK
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        
+    - name: Check package.json
+      run: |
+        if [ ! -f package.json ]; then
+          echo "No package.json found. Creating one..."
+          npx create-expo-app@latest temp-app --template blank
+          cp -r temp-app/* .
+          rm -rf temp-app
+        fi
+        
+    - name: Install dependencies
+      run: npm install
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          
-      - name: Create Expo project
-        run: |
-          if [ ! -f package.json ]; then
-            npx create-expo-app@latest . --template blank --yes
-          fi
-          
-      - name: Install dependencies
-        run: npm install
+    - name: Install EAS CLI
+      run: npm install -g eas-cli
+      
+    - name: Build APK with EAS
+      run: |
+        echo "Building APK..."
+        eas build --platform android --profile preview --non-interactive --wait
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-        
-      - name: Build APK
-        run: |
-          cat > eas.json << 'EOF'
-          {
-            "cli": { "version": ">= 0.60.0" },
-            "build": { "production": { "android": { "buildType": "apk" } } },
-            "submit": { "production": {} }
-          }
-          EOF
-          eas build --platform android --profile production --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: |
-            *.apk
-            **/*.apk      
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release
+        path: '*.apk'
