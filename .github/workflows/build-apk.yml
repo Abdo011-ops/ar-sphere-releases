@@ -1,8 +1,6 @@
 name: Build APK
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -14,26 +12,37 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           
-      - name: Check package.json
+      - name: Create Expo project
         run: |
           if [ ! -f package.json ]; then
-            echo "No package.json found. Creating one..."
-            npx create-expo-app@latest temp-app --template blank
-            cp -r temp-app/* .
-            rm -rf temp-app
+            npx create-expo-app@latest . --template blank --yes
           fi
           
       - name: Install dependencies
         run: npm install
         
-      - name: Install Expo CLI
-        run: npm install -g expo-cli eas-cli
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
         
       - name: Build APK
         run: |
-          echo "Build started"
-          # Expo build command will go here
+          cat > eas.json << 'EOF'
+          {
+            "cli": { "version": ">= 0.60.0" },
+            "build": { "production": { "android": { "buildType": "apk" } } },
+            "submit": { "production": {} }
+          }
+          EOF
+          eas build --platform android --profile production --non-interactive
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}  
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: |
+            *.apk
+            **/*.apk      
