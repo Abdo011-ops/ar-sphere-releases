@@ -1,4 +1,4 @@
-    name: Build APK
+name: Build APK
 on:
   push:
     branches: [ main ]
@@ -8,86 +8,88 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
-        
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-        
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      
-    - name: Check and fix project structure
-      run: |
-        if [ ! -f package.json ]; then
-          echo "No package.json found. Creating Expo project..."
-          npx create-expo-app@latest . --template blank -- --force
-        fi
-        
-        if [ ! -f App.js ] && [ ! -f App.tsx ]; then
-          echo "No App.js found. Creating one..."
-          echo "import { StatusBar } from 'expo-status-bar';
-        import { StyleSheet, Text, View } from 'react-native';
+      - uses: actions/checkout@v4
 
-        export default function App() {
-          return (
-            <View style={styles.container}>
-              <Text>Open up App.js to start working on your app!</Text>
-              <StatusBar style="auto" />
-            </View>
-          );
-        }
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-        const styles = StyleSheet.create({
-          container: {
-            flex: 1,
-            backgroundColor: '#fff',
-            alignItems: 'center',
-            justifyContent: 'center',
-          },
-        });" > App.js
-        fi
-        
-        if [ ! -f app.json ]; then
-          echo '{"expo": {"name": "MyApp", "slug": "my-app", "android": {"package": "com.example.myapp"}}}' > app.json
-        else
-          node -e "
-          const fs = require('fs');
-          let config = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          if(!config.expo) config.expo = {};
-          if(!config.expo.name) config.expo.name = 'MyApp';
-          if(!config.expo.slug) config.expo.slug = 'my-app';
-          if(!config.expo.android) config.expo.android = {};
-          if(!config.expo.android.package) config.expo.android.package = 'com.example.myapp';
-          fs.writeFileSync('app.json', JSON.stringify(config, null, 2));
-          "
-        fi
-        
-        echo "Project files:"
-        ls -la
-        
-    - name: Install dependencies
-      run: npm install
-      
-    - name: Prebuild Android
-      run: npx expo prebuild --platform android --no-install
-      
-    - name: Build APK
-      run: |
-        cd android
-        ./gradlew assembleRelease
-      env:
-        ORG_GRADLE_PROJECT_hermesEnabled: true
-        
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release
-        path: android/app/build/outputs/apk/release/*.apk
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Check and fix project structure
+        run: |
+          if [ ! -f package.json ]; then
+            echo "No package.json found. Creating Expo project..."
+            npx create-expo-app@latest . --template blank -- --force
+          fi
+
+          if [ ! -f App.js ] && [ ! -f App.tsx ]; then
+            echo "No App.js found. Creating one..."
+            cat > App.js << 'EOF'
+          import { StatusBar } from 'expo-status-bar';
+          import { StyleSheet, Text, View } from 'react-native';
+
+          export default function App() {
+            return (
+              <View style={styles.container}>
+                <Text>Open up App.js to start working on your app!</Text>
+                <StatusBar style="auto" />
+              </View>
+            );
+          }
+
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+              backgroundColor: '#fff',
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
+          });
+          EOF
+          fi
+
+          if [ ! -f app.json ]; then
+            echo '{"expo": {"name": "MyApp", "slug": "my-app", "android": {"package": "com.example.myapp"}}}' > app.json
+          else
+            node -e "
+            const fs = require('fs');
+            let config = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            if(!config.expo) config.expo = {};
+            if(!config.expo.name) config.expo.name = 'MyApp';
+            if(!config.expo.slug) config.expo.slug = 'my-app';
+            if(!config.expo.android) config.expo.android = {};
+            if(!config.expo.android.package) config.expo.android.package = 'com.example.myapp';
+            fs.writeFileSync('app.json', JSON.stringify(config, null, 2));
+            "
+          fi
+
+          echo "Project files:"
+          ls -la
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+        env:
+          ORG_GRADLE_PROJECT_hermesEnabled: true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: android/app/build/outputs/apk/release/*.apk    
