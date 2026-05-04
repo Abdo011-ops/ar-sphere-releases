@@ -1,4 +1,4 @@
-    name: Build APK
+name: Build APK
 on:
   push:
     branches: [ main ]
@@ -15,6 +15,15 @@ jobs:
       with:
         node-version: 20
         
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
     - name: Check package.json
       run: |
         if [ ! -f package.json ]; then
@@ -27,18 +36,21 @@ jobs:
     - name: Install dependencies
       run: npm install
       
-    - name: Install EAS CLI
-      run: npm install -g eas-cli
+    - name: Install Expo CLI
+      run: npm install -g expo-cli
       
-    - name: Build APK with EAS
+    - name: Prebuild Android
+      run: npx expo prebuild --platform android
+      
+    - name: Build APK
       run: |
-        echo "Building APK..."
-        eas build --platform android --profile preview --non-interactive --wait
+        cd android
+        ./gradlew assembleRelease
       env:
-        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        ORG_GRADLE_PROJECT_hermesEnabled: true
         
-    - name: Upload APK Artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release
-        path: '*.apk'
+        path: android/app/build/outputs/apk/release/*.apk    
