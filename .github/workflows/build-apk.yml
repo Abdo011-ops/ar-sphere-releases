@@ -1,4 +1,4 @@
-name: Build APK
+    name: Build APK
 on:
   push:
     branches: [ main ]
@@ -24,37 +24,57 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       
-    - name: Check and fix package.json
+    - name: Check and fix project structure
       run: |
         if [ ! -f package.json ]; then
-          echo "No package.json found. Creating one..."
-          npx create-expo-app@latest temp-app --template blank
-          cp -r temp-app/* .
-          rm -rf temp-app
+          echo "No package.json found. Creating Expo project..."
+          npx create-expo-app@latest . --template blank -- --force
         fi
         
-    - name: Ensure Android package is set
-      run: |
+        if [ ! -f App.js ] && [ ! -f App.tsx ]; then
+          echo "No App.js found. Creating one..."
+          echo "import { StatusBar } from 'expo-status-bar';
+        import { StyleSheet, Text, View } from 'react-native';
+
+        export default function App() {
+          return (
+            <View style={styles.container}>
+              <Text>Open up App.js to start working on your app!</Text>
+              <StatusBar style="auto" />
+            </View>
+          );
+        }
+
+        const styles = StyleSheet.create({
+          container: {
+            flex: 1,
+            backgroundColor: '#fff',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+        });" > App.js
+        fi
+        
         if [ ! -f app.json ]; then
-          echo '{"expo": {"android": {"package": "com.example.myapp"}}}' > app.json
+          echo '{"expo": {"name": "MyApp", "slug": "my-app", "android": {"package": "com.example.myapp"}}}' > app.json
         else
           node -e "
           const fs = require('fs');
           let config = JSON.parse(fs.readFileSync('app.json', 'utf8'));
           if(!config.expo) config.expo = {};
+          if(!config.expo.name) config.expo.name = 'MyApp';
+          if(!config.expo.slug) config.expo.slug = 'my-app';
           if(!config.expo.android) config.expo.android = {};
           if(!config.expo.android.package) config.expo.android.package = 'com.example.myapp';
           fs.writeFileSync('app.json', JSON.stringify(config, null, 2));
           "
         fi
-        echo "Final app.json:"
-        cat app.json
+        
+        echo "Project files:"
+        ls -la
         
     - name: Install dependencies
       run: npm install
-      
-    - name: Install Expo CLI
-      run: npm install -g expo-cli
       
     - name: Prebuild Android
       run: npx expo prebuild --platform android --no-install
